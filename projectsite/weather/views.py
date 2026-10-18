@@ -1,7 +1,39 @@
 
 from django.shortcuts import render
+from django.http import JsonResponse
 import os
 import requests
+
+
+def city_suggestions(request):
+    query = request.GET.get("q", "").strip()
+    api_key = os.getenv("OPENWEATHER_API_KEY")
+
+    if len(query) < 2 or not api_key:
+        return JsonResponse([], safe=False)
+
+    try:
+        response = requests.get(
+            "https://api.openweathermap.org/geo/1.0/direct",
+            params={"q": query, "limit": 5, "appid": api_key},
+            timeout=5,
+        )
+        response.raise_for_status()
+        places = response.json()
+        suggestions = []
+        for place in places[:5]:
+            name = place.get("name")
+            country = place.get("country")
+            if not name or not country:
+                continue
+
+            label = ", ".join(
+                part for part in (name, place.get("state"), country) if part
+            )
+            suggestions.append({"label": label, "query": f"{name},{country}"})
+        return JsonResponse(suggestions, safe=False)
+    except (requests.exceptions.RequestException, ValueError):
+        return JsonResponse([], safe=False)
 
 
 def weather_view(request):
@@ -41,6 +73,9 @@ def weather_view(request):
                 "temp": data["main"]["temp"],
                 "description": data["weather"][0]["description"].title(),
                 "icon": data["weather"][0]["icon"],
+                "precipitation": data.get("rain", {}).get("1h", 0),
+                "humidity": data["main"]["humidity"],
+                "wind": round(data["wind"]["speed"] * 3.6),
             }
 
         except requests.exceptions.HTTPError as e:
@@ -65,6 +100,6 @@ def weather_view(request):
 
     return render(
         request,
-        "weather.html",
+        "index.html",
         {"weather": weather_data, "city": city}
     )

@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,33 +7,45 @@
   <title>Simple Weather App</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css?family=Montserrat:400,700,900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/feather-icons/4.29.2/feather.min.css">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="{% static 'styles.css' %}">
   <script src="https://unpkg.com/feather-icons"></script>
-  <script src="script.js" defer></script>
+  <script src="{% static 'styles.js' %}" defer></script>
 </head>
 <body>
   <main class="app">
-    <div class="search-row">
-      <input id="city-input" type="text" placeholder="Enter a city..." value="Manila" aria-label="City name">
-      <button id="search-button" type="button" aria-label="Search city"><i data-feather="search"></i></button>
-    </div>
+    <form class="search-row" method="get" action="{% url 'weather' %}" data-suggestions-url="{% url 'city_suggestions' %}">
+      <div class="city-field">
+        <input id="city-input" type="text" placeholder="Enter a city..." value="{{ city }}" aria-label="City name" aria-autocomplete="list" aria-controls="city-suggestions" aria-expanded="false" autocomplete="off" required>
+        <div id="city-suggestions" class="city-suggestions" role="listbox" aria-label="City suggestions" hidden></div>
+      </div>
+      <input id="city-query" type="hidden" name="city" value="{{ city }}">
+      <button id="search-button" type="submit" aria-label="Search city"><i data-feather="search"></i></button>
+    </form>
 
     <section class="container">
       <div class="weather-side">
         <div class="weather-gradient"></div>
         <div class="date-container">
-          <h2 class="date-dayname" id="day-name">Tuesday</h2>
-          <span class="date-day" id="date-day">15 Jan 2019</span>
+          <h2 class="date-dayname" id="day-name">{% now "l" %}</h2>
+          <span class="date-day" id="date-day">{% now "j M Y" %}</span>
           <div class="location-line">
             <i class="location-icon" data-feather="map-pin"></i>
-            <span class="location" id="location">Manila, PH</span>
+            <span class="location" id="location">{% if weather.city %}{{ weather.city }}, {{ weather.country }}{% else %}{{ city }}{% endif %}</span>
           </div>
         </div>
         <div class="weather-container">
-          <i class="weather-icon" id="weather-icon" data-feather="sun"></i>
-          <h1 class="weather-temp" id="weather-temp">--°C</h1>
-          <h3 class="weather-desc" id="weather-desc">Loading...</h3>
+          {% if weather.icon %}
+            <img class="weather-icon" id="weather-icon" src="https://openweathermap.org/img/wn/{{ weather.icon }}@2x.png" alt="{{ weather.description }}">
+          {% else %}
+            <i class="weather-icon" id="weather-icon" data-feather="cloud"></i>
+          {% endif %}
+          {% if weather.city %}
+            <h1 class="weather-temp" id="weather-temp">{{ weather.temp|floatformat:0 }}°C</h1>
+            <h3 class="weather-desc" id="weather-desc">{{ weather.description }}</h3>
+          {% else %}
+            <h1 class="weather-temp" id="weather-temp">--°C</h1>
+            <h3 class="weather-desc" id="weather-desc">Current weather</h3>
+          {% endif %}
         </div>
       </div>
 
@@ -41,41 +54,28 @@
           <div class="today-info">
             <div class="precipitation">
               <span class="title">PRECIPITATION</span>
-              <span class="value" id="precipitation">-- %</span>
+              <span class="value" id="precipitation">{% if weather.city %}{{ weather.precipitation }} mm{% else %}--{% endif %}</span>
               <div class="clear"></div>
             </div>
             <div class="humidity">
               <span class="title">HUMIDITY</span>
-              <span class="value" id="humidity">-- %</span>
+              <span class="value" id="humidity">{% if weather.city %}{{ weather.humidity }} %{% else %}--{% endif %}</span>
               <div class="clear"></div>
             </div>
             <div class="wind">
               <span class="title">WIND</span>
-              <span class="value" id="wind">-- km/h</span>
+              <span class="value" id="wind">{% if weather.city %}{{ weather.wind }} km/h{% else %}--{% endif %}</span>
               <div class="clear"></div>
             </div>
           </div>
         </div>
 
-        <div class="week-container">
-          <ul class="week-list" id="week-list">
-            <li class="forecast-loading">Loading forecast...</li>
-          </ul>
-        </div>
-
-        <div class="location-container">
-          <button class="location-button" id="change-location" type="button">
-            <i data-feather="map-pin"></i>
-            <span>Change location</span>
-          </button>
-        </div>
         <div class="unit-row">
-          <button id="unit-toggle" type="button">Switch to °F</button>
           <span id="status" aria-live="polite">Weather by OpenWeather</span>
         </div>
       </div>
     </section>
-    <p class="error-message" id="error-message" role="alert"></p>
+    {% if weather.error %}<p class="error-message" id="error-message" role="alert">{{ weather.error }}</p>{% endif %}
     <footer>Weather data by <a href="https://openweathermap.org/" target="_blank" rel="noreferrer">OpenWeather</a></footer>
   </main>
 </body>
